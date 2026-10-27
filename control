@@ -1,0 +1,9 @@
+Package: com.vicrtzx.lucidinsta
+Name: Lucid Insta
+Depends: mobilesubstrate
+Version: 1.0
+Architecture: iphoneos-arm64
+Description: Ultra-performance, battery-efficient Instagram mod with Liquid Glass design for iOS
+Maintainer: Lucid
+Author: Lucid
+Section: Tweaks

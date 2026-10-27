@@ -1,0 +1,95 @@
+name: Build Lucid Instagram IPA
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build Lucid Instagram v1.0
+    runs-on: macos-14
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Install System Dependencies
+        run: |
+          brew install dpkg ldid
+          python3 -m pip install --break-system-packages git+https://github.com/asdfzxcvbn/pyzule-rw.git pillow
+
+      - name: Setup Theos & SDKs
+        run: |
+          git clone --recursive https://github.com/theos/theos.git ~/theos
+          echo "THEOS=$HOME/theos" >> $GITHUB_ENV
+          curl -Lo master.zip https://github.com/theos/sdks/archive/master.zip
+          unzip -q master.zip
+          mv sdks-master/*.sdk ~/theos/sdks/
+          rm -rf master.zip sdks-master
+          ls -la ~/theos/sdks/
+
+      - name: Compile Lucid Insta Tweak
+        run: |
+          make clean
+          make package FINALPACKAGE=1
+          mkdir -p packages
+          cp packages/*.deb packages/com.vicrtzx.lucidinsta.deb || true
+          ls -la packages/
+
+      - name: Download RyukGram Core Engine & Assets
+        run: |
+          echo "Downloading RyukGram v1.5.0 rootless deb and NoPluginsPatch..."
+          curl -L --retry 3 -o packages/ryukgram.deb "https://github.com/faroukbmiled/RyukGram/releases/download/v1.5.0/RyukGram_1.5.0_IG452.0.1_rootless.deb"
+          curl -L --retry 3 -o packages/NoPluginsPatch.dylib "https://github.com/faroukbmiled/RyukGram/releases/download/v1.5.0/NoPluginsPatch_v1.5.0.dylib"
+          
+          python3 extract_deb.py packages/ryukgram.deb packages/extracted
+          cp packages/extracted/var/jb/Library/MobileSubstrate/DynamicLibraries/RyukGram.dylib packages/
+          cp -R "packages/extracted/var/jb/Library/Application Support/RyukGram.bundle" packages/
+          rm -rf packages/extracted packages/ryukgram.deb
+          ls -la packages/
+
+      - name: Download Base Instagram v452.0.0 Decrypted IPA
+        run: |
+          echo "Downloading clean decrypted Instagram v452.0.0 IPA..."
+          curl -L --retry 3 -o packages/com.burbn.instagram.ipa "https://github.com/Omyxun/SCInsta/releases/download/i/com.burbn.instagram_452.0.0_und3fined.ipa"
+          ls -lh packages/com.burbn.instagram.ipa
+
+      - name: Brand and Localize as Lucid Insta
+        run: |
+          python3 generate_icon.py
+          python3 patch_lucid_insta.py
+
+      - name: Inject Tweaks with Cyan
+        run: |
+          LUCID_DEB=$(ls packages/com.vicrtzx.lucidinsta*.deb | head -n 1)
+          echo "Injecting into BaseInstagram-branded.ipa using Cyan..."
+          cyan -i packages/BaseInstagram-branded.ipa \
+               -f packages/RyukGram.dylib packages/NoPluginsPatch.dylib packages/RyukGram.bundle "$LUCID_DEB" \
+               -o Lucid-Instagram-v1.0.ipa \
+               -c 9 -m 15.0 -du \
+               -n "Lucid Insta"
+               
+          # Strip any residual appex extensions to prevent 3-AppID limit on free accounts
+          INJECT_TMP="$(mktemp -d)"
+          unzip -q Lucid-Instagram-v1.0.ipa -d "$INJECT_TMP"
+          APP_DIR="$(find "$INJECT_TMP/Payload" -maxdepth 1 -type d -name '*.app' | head -1)"
+          if [ -n "$APP_DIR" ]; then
+            find "$APP_DIR" -type d -name '*.appex' -prune -exec rm -rf {} +
+            ( cd "$INJECT_TMP" && zip -qr -9 ../repacked.ipa Payload )
+            mv "$INJECT_TMP/../repacked.ipa" Lucid-Instagram-v1.0.ipa
+          fi
+          rm -rf "$INJECT_TMP"
+          
+          ls -lh Lucid-Instagram-v1.0.ipa
+
+      - name: Upload Lucid-Instagram-v1.0 IPA Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Lucid-Instagram-v1.0
+          path: Lucid-Instagram-v1.0.ipa
+          if-no-files-found: error
