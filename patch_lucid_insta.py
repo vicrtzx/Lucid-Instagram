@@ -28,6 +28,52 @@ def generate_app_icons(source_icon, output_dir):
             generated[filename] = f.read()
     return generated
 
+def clean_strings(content):
+    replacements = [
+        ('RyukGram', 'Lucid Insta'),
+        ('ryukgram', 'lucid_insta'),
+        ('SCInsta', 'Lucid Suite'),
+        ('scinsta', 'lucid_suite'),
+        ('BHInstagram', 'Lucid Suite'),
+        ('bhinstagram', 'lucid_suite'),
+        ('faroukbmiled', 'vicrtzx'),
+        ('BandarHL', 'vicrtzx'),
+        ('SoCuul', 'vicrtzx'),
+        ('Donate to Ryuk', 'Lucid Insta'),
+        ('Doe para Ryuk', 'Lucid Insta'),
+        ('Support Lucid Insta development', 'Lucid Insta'),
+        ('Apoie o desenvolvimento do Lucid Insta', 'Lucid Insta'),
+        ('Lucid Insta developer', 'Autor'),
+        ('Desenvolvedor Lucid Insta', 'vicrtzx'),
+        ('SCInsta developer', 'Lucid Suite'),
+        ('Desenvolvedor do SCInsta', 'Lucid Suite'),
+        ('BHInstagram developer', 'Lucid Suite'),
+        ('Desenvolvedor do BHInstagram', 'Lucid Suite'),
+        ('Credits', 'Sobre o Lucid'),
+        ('Créditos', 'Sobre o Lucid'),
+        ('Developers', 'Autor'),
+        ('Desenvolvedores', 'Autor'),
+        ('Join Telegram channel', 'Lucid Insta'),
+        ('Junte-se ao canal Telegram', 'Lucid Insta'),
+        ('View on GitHub', 'Lucid Insta'),
+        ('Ver no GitHub', 'Lucid Insta'),
+        ('Open GitHub', 'Lucid Insta'),
+        ('Abra o GitHub', 'Lucid Insta'),
+        ('Donate', 'Lucid'),
+        ('Doar', 'Lucid'),
+        ('Telegram channel', 'Lucid Insta'),
+        ('Canal de telegrama', 'Lucid Insta'),
+        ('Version, credits, and links', 'Versão e detalhes'),
+        ('Versão, créditos e links', 'Versão e detalhes'),
+        ('Lucid Insta is an independent project inspired by SCInsta.', 'Lucid Insta — Projeto Pessoal & Autoral.'),
+        ('O Lucid Insta é um projeto independente inspirado no SCInsta.', 'Lucid Insta — Projeto Pessoal & Autoral.'),
+        ('Appreciate the support', 'Versão Autoral'),
+        ('Obrigado pelo apoio', 'Versão Autoral'),
+    ]
+    for old, new in replacements:
+        content = content.replace(old, new)
+    return content
+
 def patch_bundle_strings(bundle_dir):
     if not os.path.exists(bundle_dir):
         return
@@ -40,13 +86,10 @@ def patch_bundle_strings(bundle_dir):
                     with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
                         content = f.read()
                     
-                    # Rebrand to Lucid Insta
-                    content = content.replace('RyukGram', 'Lucid Insta')
-                    content = content.replace('ryukgram', 'lucid_insta')
-                    
+                    cleaned = clean_strings(content)
                     with open(file_path, 'w', encoding='utf-8') as f:
-                        f.write(content)
-                    print(f"Branded strings in {file_path}")
+                        f.write(cleaned)
+                    print(f"Purged third-party credits and branded {file_path}")
                 except Exception as e:
                     print(f"Error patching {file_path}: {e}")
 
@@ -88,6 +131,5 @@ def patch_base_ipa():
     print(f"Base IPA branded successfully!")
 
 if __name__ == '__main__':
-    # Patch bundle if extracted
     patch_bundle_strings('packages/RyukGram.bundle')
     patch_base_ipa()
