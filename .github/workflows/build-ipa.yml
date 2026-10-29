@@ -67,9 +67,11 @@ jobs:
       - name: Inject Tweaks with Cyan
         run: |
           LUCID_DEB=$(ls packages/com.vicrtzx.lucidinsta*.deb | head -n 1)
+          # Promote frameworks from RyukGram.bundle to top-level Frameworks for proper sideload code signing
+          cp -R packages/RyukGram.bundle/*.framework packages/
           echo "Injecting into BaseInstagram-branded.ipa using Cyan..."
           cyan -i packages/BaseInstagram-branded.ipa \
-               -f packages/RyukGram.dylib packages/NoPluginsPatch.dylib packages/RyukGram.bundle "$LUCID_DEB" \
+               -f packages/RyukGram.dylib packages/NoPluginsPatch.dylib packages/*.framework packages/RyukGram.bundle "$LUCID_DEB" \
                -o Lucid-Instagram-v1.0.ipa \
                -c 9 -m 15.0 -du \
                -n "Lucid Insta"
