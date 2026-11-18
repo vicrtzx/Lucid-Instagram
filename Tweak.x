@@ -20,6 +20,8 @@ static NSDictionary<NSString *, id> *lucidInstaDefaultMap(void) {
             @"theme_full_oled": @YES,                  // Extend pure black across secondary surfaces
             @"theme_oled_chat": @YES,                  // Pure black DM thread background
             @"theme_keyboard": @"oled",                // Matching dark/OLED keyboard
+            @"liquid_glass_surfaces": @YES,            // Native iOS 26 Liquid Glass surfaces & floating nav
+            @"liquid_glass_native_tabbar": @YES,       // Native iOS 26 system Liquid Glass tab bar
 
             // === 2. BATTERY, NETWORK & BACKGROUND GUARD ===
             @"disable_bg_refresh": @YES,               // Prevent background feed refresh wakeups

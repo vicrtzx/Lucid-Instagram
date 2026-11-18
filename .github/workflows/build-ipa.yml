@@ -47,8 +47,8 @@ jobs:
 
       - name: Download Core Engine & Assets
         run: |
-          curl -fsSL --retry 3 -o packages/ryukgram.deb "https://github.com/faroukbmiled/RyukGram/releases/download/v1.5.0/RyukGram_1.5.0_IG452.0.1_rootless.deb"
-          curl -fsSL --retry 3 -o packages/NoPluginsPatch.dylib "https://github.com/faroukbmiled/RyukGram/releases/download/v1.5.0/NoPluginsPatch_v1.5.0.dylib"
+          curl -fsSL --retry 3 -o packages/ryukgram.deb "https://github.com/faroukbmiled/RyukGram/releases/download/v1.5.1/RyukGram_1.5.1_IG453.0.0_rootless.deb"
+          curl -fsSL --retry 3 -o packages/NoPluginsPatch.dylib "https://github.com/faroukbmiled/RyukGram/releases/download/v1.5.1/NoPluginsPatch_v1.5.1.dylib"
 
           python3 extract_deb.py packages/ryukgram.deb packages/extracted
           cp packages/extracted/var/jb/Library/MobileSubstrate/DynamicLibraries/RyukGram.dylib packages/
@@ -56,14 +56,15 @@ jobs:
           rm -rf packages/extracted packages/ryukgram.deb
 
           # Remove nested software-FFmpeg frameworks (~36 MB) from resource bundle:
-          # Instagram 452 already links its own @rpath/libavcodec.framework (FFmpeg 7 ABI),
+          # Instagram already links its own @rpath/libavcodec.framework (FFmpeg 7 ABI),
           # and Lucid Insta uses native direct CDN HD streams (0% CPU re-encoding, clean sideload signing).
           rm -rf packages/RyukGram.bundle/*.framework
           strip -x packages/RyukGram.dylib packages/NoPluginsPatch.dylib || true
+          ldid -S packages/RyukGram.dylib packages/NoPluginsPatch.dylib || true
 
-      - name: Download Base Instagram v452.0.0 Decrypted IPA
+      - name: Download Base Instagram v454.1.0 Decrypted IPA
         run: |
-          curl -fsSL --retry 3 -o packages/com.burbn.instagram.ipa "https://github.com/Omyxun/SCInsta/releases/download/i/com.burbn.instagram_452.0.0_und3fined.ipa"
+          curl -fsSL --retry 3 -o packages/com.burbn.instagram.ipa "https://archive.org/download/com.burbn.instagram_v454.1.0_und3fined/com.burbn.instagram_v454.1.0_und3fined.ipa"
           ls -lh packages/com.burbn.instagram.ipa
 
       - name: Brand, Slim, and Localize as Lucid Insta
