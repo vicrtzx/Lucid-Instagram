@@ -1,6 +1,9 @@
 .theos/
 packages/
+obj/
 *.deb
 *.ipa
-.DS_Store
 temp_icons/
+__pycache__/
+download_artifact.py
+monitor.py

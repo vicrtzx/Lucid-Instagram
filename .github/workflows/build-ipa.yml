@@ -11,7 +11,7 @@ concurrency:
 
 jobs:
   build:
-    name: Build Lucid Instagram v1.0
+    name: Build Lucid Instagram v1.2
     runs-on: macos-14
 
     steps:
@@ -31,7 +31,6 @@ jobs:
           unzip -q master.zip
           mv sdks-master/*.sdk ~/theos/sdks/
           rm -rf master.zip sdks-master
-          ls -la ~/theos/sdks/
 
       - name: Compile Lucid Insta Tweak
         run: |
@@ -39,27 +38,30 @@ jobs:
           make package FINALPACKAGE=1
           mkdir -p packages
           cp packages/*.deb packages/com.vicrtzx.lucidinsta.deb || true
-          ls -la packages/
+          ls -lh packages/
 
-      - name: Download RyukGram Core Engine & Assets
+      - name: Download Core Engine & Assets
         run: |
-          echo "Downloading RyukGram v1.5.0 rootless deb and NoPluginsPatch..."
-          curl -L --retry 3 -o packages/ryukgram.deb "https://github.com/faroukbmiled/RyukGram/releases/download/v1.5.0/RyukGram_1.5.0_IG452.0.1_rootless.deb"
-          curl -L --retry 3 -o packages/NoPluginsPatch.dylib "https://github.com/faroukbmiled/RyukGram/releases/download/v1.5.0/NoPluginsPatch_v1.5.0.dylib"
-          
+          curl -fsSL --retry 3 -o packages/ryukgram.deb "https://github.com/faroukbmiled/RyukGram/releases/download/v1.5.0/RyukGram_1.5.0_IG452.0.1_rootless.deb"
+          curl -fsSL --retry 3 -o packages/NoPluginsPatch.dylib "https://github.com/faroukbmiled/RyukGram/releases/download/v1.5.0/NoPluginsPatch_v1.5.0.dylib"
+
           python3 extract_deb.py packages/ryukgram.deb packages/extracted
           cp packages/extracted/var/jb/Library/MobileSubstrate/DynamicLibraries/RyukGram.dylib packages/
           cp -R "packages/extracted/var/jb/Library/Application Support/RyukGram.bundle" packages/
           rm -rf packages/extracted packages/ryukgram.deb
-          ls -la packages/
+
+          # Remove nested software-FFmpeg frameworks (~36 MB) from resource bundle:
+          # Instagram 452 already links its own @rpath/libavcodec.framework (FFmpeg 7 ABI),
+          # and Lucid Insta uses native direct CDN HD streams (0% CPU re-encoding, clean sideload signing).
+          rm -rf packages/RyukGram.bundle/*.framework
+          strip -x packages/RyukGram.dylib packages/NoPluginsPatch.dylib || true
 
       - name: Download Base Instagram v452.0.0 Decrypted IPA
         run: |
-          echo "Downloading clean decrypted Instagram v452.0.0 IPA..."
-          curl -L --retry 3 -o packages/com.burbn.instagram.ipa "https://github.com/Omyxun/SCInsta/releases/download/i/com.burbn.instagram_452.0.0_und3fined.ipa"
+          curl -fsSL --retry 3 -o packages/com.burbn.instagram.ipa "https://github.com/Omyxun/SCInsta/releases/download/i/com.burbn.instagram_452.0.0_und3fined.ipa"
           ls -lh packages/com.burbn.instagram.ipa
 
-      - name: Brand and Localize as Lucid Insta
+      - name: Brand, Slim, and Localize as Lucid Insta
         run: |
           python3 generate_icon.py
           python3 patch_lucid_insta.py
@@ -67,31 +69,30 @@ jobs:
       - name: Inject Tweaks with Cyan
         run: |
           LUCID_DEB=$(ls packages/com.vicrtzx.lucidinsta*.deb | head -n 1)
-          # Promote frameworks from RyukGram.bundle to top-level Frameworks for proper sideload code signing
-          cp -R packages/RyukGram.bundle/*.framework packages/
-          echo "Injecting into BaseInstagram-branded.ipa using Cyan..."
           cyan -i packages/BaseInstagram-branded.ipa \
-               -f packages/RyukGram.dylib packages/NoPluginsPatch.dylib packages/*.framework packages/RyukGram.bundle "$LUCID_DEB" \
-               -o Lucid-Instagram-v1.0.ipa \
-               -c 9 -m 15.0 -du \
+               -f packages/RyukGram.dylib packages/NoPluginsPatch.dylib packages/RyukGram.bundle "$LUCID_DEB" \
+               -o Lucid-Instagram-v1.2.ipa \
+               -c 9 -m 15.0 -du -w \
                -n "Lucid Insta"
-               
-          # Strip any residual appex extensions to prevent 3-AppID limit on free accounts
+
+          # Ensure zero residual .appex / SC_Info entries remain for free-account sideloading
           INJECT_TMP="$(mktemp -d)"
-          unzip -q Lucid-Instagram-v1.0.ipa -d "$INJECT_TMP"
+          unzip -q Lucid-Instagram-v1.2.ipa -d "$INJECT_TMP"
           APP_DIR="$(find "$INJECT_TMP/Payload" -maxdepth 1 -type d -name '*.app' | head -1)"
           if [ -n "$APP_DIR" ]; then
-            find "$APP_DIR" -type d -name '*.appex' -prune -exec rm -rf {} +
+            find "$APP_DIR" -type d \( -name '*.appex' -o -name 'PlugIns' -o -name 'SC_Info' \) -prune -exec rm -rf {} +
+            ldid -S "$APP_DIR" || true
             ( cd "$INJECT_TMP" && zip -qr -9 ../repacked.ipa Payload )
-            mv "$INJECT_TMP/../repacked.ipa" Lucid-Instagram-v1.0.ipa
+            mv "$INJECT_TMP/../repacked.ipa" Lucid-Instagram-v1.2.ipa
           fi
           rm -rf "$INJECT_TMP"
-          
-          ls -lh Lucid-Instagram-v1.0.ipa
 
-      - name: Upload Lucid-Instagram-v1.0 IPA Artifact
+          ls -lh Lucid-Instagram-v1.2.ipa
+
+      - name: Upload Lucid-Instagram-v1.2 IPA Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Lucid-Instagram-v1.0
-          path: Lucid-Instagram-v1.0.ipa
+          name: Lucid-Instagram-v1.2
+          path: Lucid-Instagram-v1.2.ipa
+          retention-days: 1
           if-no-files-found: error
